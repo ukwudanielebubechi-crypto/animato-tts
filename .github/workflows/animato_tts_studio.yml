@@ -48,19 +48,25 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      # The installed engines and downloaded models are kept in a GitHub cache. An update of the app NEVER starts them from zero:
+      # the newest cache that starts with K1 is restored, setup installs / downloads only what is missing in it,
+      # and a new copy is saved only when something was actually added (so a finished cache is never re-downloaded).
       - id: a
         uses: actions/cache/restore@v4
         with:
           path: ${{ env.P1 }}
-          key: ${{ env.K1 }}
-      - name: setup
+          key: ${{ env.K1 }}-${{ github.run_id }}
+          restore-keys: |
+            ${{ env.K1 }}
+      - id: s
+        name: setup
         run: python3 tts_studio.py setup 2>&1 | tee -a r.log
-      - if: steps.a.outputs.cache-hit != 'true'
+      - if: steps.s.outputs.changed == 'true'
         continue-on-error: true
         uses: actions/cache/save@v4
         with:
           path: ${{ env.P1 }}
-          key: ${{ env.K1 }}
+          key: ${{ env.K1 }}-${{ github.run_id }}
       - name: serve
         run: python3 tts_studio.py studio 2>&1 | tee -a r.log
       - if: failure() && env.WARMUP != 'true'
